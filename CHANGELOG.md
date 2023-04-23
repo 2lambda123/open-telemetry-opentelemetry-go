@@ -49,6 +49,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - The `Observer.ObserveInt64` method now accepts `...ObserveOption`
   - The `Observer.ObserveFloat64` method now accepts `...ObserveOption`
 - Move global metric back to `go.opentelemetry.io/otel/metric/global` from `go.opentelemetry.io/otel`. (#3986)
+- Support TraceFlags-only propagation without the parent span in OpenTracing Bridge (#3998).
 
 ### Fixed
 
