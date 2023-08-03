@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [Unreleased]
 
+### Fixed
+
+- Do not log errors for 2XX response for otlptracehttp exporter. (#3706)
+
 ### Added
 
 - Add `ManualReader` struct in `go.opentelemetry.io/otel/sdk/metric`. (#4244)
