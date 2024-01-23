@@ -738,6 +738,7 @@ The next release will require at least [Go 1.19].
   These additions are replacements for the `Instrument` and `InstrumentKind` types from `go.opentelemetry.io/otel/sdk/metric/view`. (#3459)
 - The `Stream` type is added to `go.opentelemetry.io/otel/sdk/metric` to define a metric data stream a view will produce. (#3459)
 - The `AssertHasAttributes` allows instrument authors to test that datapoints returned have appropriate attributes. (#3487)
+- Both `"go.opentelemetry.io/otel/sdk/resource".WithContainer` and `"go.opentelemetry.io/otel/sdk/resource".WithContainerID` now support the cgoupv2 files. (#3508)
 
 ### Changed
 
@@ -763,6 +764,7 @@ The next release will require at least [Go 1.19].
 - Handle partial success responses in `go.opentelemetry.io/otel/exporters/otlp/otlpmetric` exporters. (#3162, #3440)
 - Prevent duplicate Prometheus description, unit, and type. (#3469)
 - Prevents panic when using incorrect `attribute.Value.As[Type]Slice()`. (#3489)
+- Both `"go.opentelemetry.io/otel/sdk/resource".WithContainer` and `"go.opentelemetry.io/otel/sdk/resource".WithContainerID` now return the correct container ID on the Podman. (#3508)
 
 ### Removed
 
