@@ -7,7 +7,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
+	"sync"
 )
 
 // ErrPartialResource is returned by a detector when complete source
@@ -49,6 +51,51 @@ func Detect(ctx context.Context, detectors ...Detector) (*Resource, error) {
 	return r, detect(ctx, r, detectors)
 }
 
+type detectInternalResult struct {
+	detectorIndex int // index in the detector slice
+	resource      *Resource
+	err           error
+}
+
+func detectInternal(ctx context.Context, detectors []Detector) []detectInternalResult {
+	wg := sync.WaitGroup{}
+	resChan := make(chan detectInternalResult)
+	for i := range detectors {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+
+			detector := detectors[index]
+			if detector == nil {
+				return
+			}
+
+			r, err := detector.Detect(ctx)
+			resChan <- detectInternalResult{
+				detectorIndex: index,
+				resource:      r,
+				err:           err,
+			}
+		}(i)
+	}
+
+	go func() {
+		wg.Wait()
+		close(resChan)
+	}()
+
+	resultSlice := []detectInternalResult{}
+	for res := range resChan {
+		resultSlice = append(resultSlice, res)
+	}
+
+	slices.SortFunc(resultSlice, func(a, b detectInternalResult) int {
+		return a.detectorIndex - b.detectorIndex
+	})
+
+	return resultSlice
+}
+
 // detect runs all detectors using ctx and merges the result into res. This
 // assumes res is allocated and not nil, it will panic otherwise.
 //
@@ -56,24 +103,18 @@ func Detect(ctx context.Context, detectors ...Detector) (*Resource, error) {
 // [ErrPartialResource] [ErrSchemaURLConflict]), a single error wrapping all of
 // these errors will be returned. Otherwise, nil is returned.
 func detect(ctx context.Context, res *Resource, detectors []Detector) error {
-	var (
-		r    *Resource
-		errs detectErrs
-		err  error
-	)
+	var errs detectErrs
 
-	for _, detector := range detectors {
-		if detector == nil {
-			continue
-		}
-		r, err = detector.Detect(ctx)
-		if err != nil {
-			errs = append(errs, err)
-			if !errors.Is(err, ErrPartialResource) {
+	results := detectInternal(ctx, detectors)
+	for _, result := range results {
+		if result.err != nil {
+			errs = append(errs, result.err)
+			if !errors.Is(result.err, ErrPartialResource) {
 				continue
 			}
 		}
-		r, err = Merge(res, r)
+
+		r, err := Merge(res, result.resource)
 		if err != nil {
 			errs = append(errs, err)
 		}
