@@ -4,12 +4,15 @@
 package resource_test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.25.0"
 )
 
 const conflict = 0.5
@@ -75,4 +78,142 @@ func BenchmarkMergeResource_8(b *testing.B) {
 
 func BenchmarkMergeResource_16(b *testing.B) {
 	benchmarkMergeResource(b, 16)
+}
+
+type instantDetector struct{}
+
+// instant detector don't do anything
+// its benchmark the overhead of the resource.New implementation
+func (f instantDetector) Detect(_ context.Context) (*resource.Resource, error) {
+	return resource.NewSchemaless(), nil
+}
+
+type fastDetector struct{}
+
+func (f fastDetector) Detect(_ context.Context) (*resource.Resource, error) {
+	time.Sleep(time.Millisecond)
+	return resource.NewSchemaless(), nil
+}
+
+type mediumDetector struct{}
+
+func (f mediumDetector) Detect(_ context.Context) (*resource.Resource, error) {
+	time.Sleep(time.Millisecond * 30)
+	return resource.NewSchemaless(semconv.ServerAddress("localhost")), nil
+}
+
+type slowDetector struct{}
+
+func (f slowDetector) Detect(_ context.Context) (*resource.Resource, error) {
+	time.Sleep(time.Millisecond * 500)
+	return resource.NewSchemaless(semconv.ServerAddress("localhost"), semconv.MessageID(rand.Int())), nil
+}
+
+var _ resource.Detector = &fakeDetector{}
+
+func benchmarkOverhead(ctx context.Context, b *testing.B, testedDetector resource.Detector, n int) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	detectors := []resource.Detector{}
+	for i := 0; i < n; i++ {
+		detectors = append(detectors, testedDetector)
+	}
+	for i := 0; i < b.N; i++ {
+		_, _ = resource.New(ctx, resource.WithDetectors(detectors...))
+	}
+}
+
+func BenchmarkNewResourceOverHead_1(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, instantDetector{}, 1)
+}
+
+func BenchmarkNewResourceOverHead_2(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, instantDetector{}, 2)
+}
+
+func BenchmarkNewResourceOverHead_4(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, instantDetector{}, 4)
+}
+
+func BenchmarkNewResourceOverHead_8(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, instantDetector{}, 8)
+}
+
+func BenchmarkNewResourceOverHead_16(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, instantDetector{}, 16)
+}
+
+// fast
+
+func BenchmarkFastDetector_1(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 1)
+}
+
+func BenchmarkFastDetector_2(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 2)
+}
+
+func BenchmarkFastDetector_4(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 4)
+}
+
+func BenchmarkFastDetector_8(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 8)
+}
+
+func BenchmarkFastDetector_16(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 16)
+}
+
+// medium
+func BenchmarkMediumDetector_1(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, mediumDetector{}, 1)
+}
+
+func BenchmarkMediumDetector_2(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, mediumDetector{}, 2)
+}
+
+func BenchmarkMediumDetector_4(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, mediumDetector{}, 4)
+}
+
+func BenchmarkMediumDetector_8(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 8)
+}
+
+func BenchmarkMediumDetector_16(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, fastDetector{}, 16)
+}
+
+//slow
+
+func BenchmarkSlowDetector_1(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, slowDetector{}, 1)
+}
+
+func BenchmarkSlowDetector_2(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, slowDetector{}, 2)
+}
+
+func BenchmarkSlowDetector_4(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, slowDetector{}, 4)
+}
+
+func BenchmarkSlowDetector_8(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, slowDetector{}, 8)
+}
+
+func BenchmarkSlowDetector_16(b *testing.B) {
+	benchmarkOverhead(context.Background(), b, slowDetector{}, 16)
+}
+
+func BenchmarkDefaultResource(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = resource.Default()
+	}
 }
