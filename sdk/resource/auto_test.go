@@ -73,6 +73,17 @@ func TestDetect(t *testing.T) {
 			},
 			want: resource.NewWithAttributes(v140, bob, user),
 		},
+		{
+			name: "nil-detectors-ignored-change-anything",
+			detectors: []resource.Detector{
+				nil,
+				newDetector(v140, alice, admin),
+				nil,
+				newDetector(v140, bob, user),
+				nil,
+			},
+			want: resource.NewWithAttributes(v140, bob, user),
+		},
 	}
 
 	for _, c := range cases {
