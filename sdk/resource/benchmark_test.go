@@ -112,13 +112,13 @@ func (f slowDetector) Detect(_ context.Context) (*resource.Resource, error) {
 var _ resource.Detector = &fakeDetector{}
 
 func benchmarkOverhead(ctx context.Context, b *testing.B, testedDetector resource.Detector, n int) {
-	b.ReportAllocs()
-	b.ResetTimer()
-
 	detectors := []resource.Detector{}
 	for i := 0; i < n; i++ {
 		detectors = append(detectors, testedDetector)
 	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _ = resource.New(ctx, resource.WithDetectors(detectors...))
 	}

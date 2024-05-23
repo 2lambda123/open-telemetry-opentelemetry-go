@@ -59,35 +59,29 @@ type detectInternalResult struct {
 
 func detectInternal(ctx context.Context, detectors []Detector) []detectInternalResult {
 	wg := sync.WaitGroup{}
-	resChan := make(chan detectInternalResult)
+	mu := sync.Mutex{} //mu guard resultSlice during goroutines execution
+	resultSlice := make([]detectInternalResult, 0, len(detectors))
+
 	for i := range detectors {
+		if detectors[i] == nil {
+			continue
+		}
 		wg.Add(1)
 		go func(index int) {
 			defer wg.Done()
-
 			detector := detectors[index]
-			if detector == nil {
-				return
-			}
-
 			r, err := detector.Detect(ctx)
-			resChan <- detectInternalResult{
+			mu.Lock()
+			defer mu.Unlock()
+			resultSlice = append(resultSlice, detectInternalResult{
 				detectorIndex: index,
 				resource:      r,
 				err:           err,
-			}
+			})
 		}(i)
 	}
 
-	go func() {
-		wg.Wait()
-		close(resChan)
-	}()
-
-	resultSlice := []detectInternalResult{}
-	for res := range resChan {
-		resultSlice = append(resultSlice, res)
-	}
+	wg.Wait()
 
 	slices.SortFunc(resultSlice, func(a, b detectInternalResult) int {
 		return a.detectorIndex - b.detectorIndex
