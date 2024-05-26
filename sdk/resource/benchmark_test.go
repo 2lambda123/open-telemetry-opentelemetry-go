@@ -83,7 +83,7 @@ func BenchmarkMergeResource_16(b *testing.B) {
 type instantDetector struct{}
 
 // instant detector don't do anything
-// its benchmark the overhead of the resource.New implementation
+// its benchmark the overhead of the resource.New implementation.
 func (f instantDetector) Detect(_ context.Context) (*resource.Resource, error) {
 	return resource.NewSchemaless(), nil
 }
@@ -166,7 +166,7 @@ func BenchmarkFastDetector_16(b *testing.B) {
 	benchmarkOverhead(context.Background(), b, fastDetector{}, 16)
 }
 
-// medium
+// medium.
 func BenchmarkMediumDetector_1(b *testing.B) {
 	benchmarkOverhead(context.Background(), b, mediumDetector{}, 1)
 }
@@ -187,8 +187,7 @@ func BenchmarkMediumDetector_16(b *testing.B) {
 	benchmarkOverhead(context.Background(), b, fastDetector{}, 16)
 }
 
-//slow
-
+// slow.
 func BenchmarkSlowDetector_1(b *testing.B) {
 	benchmarkOverhead(context.Background(), b, slowDetector{}, 1)
 }

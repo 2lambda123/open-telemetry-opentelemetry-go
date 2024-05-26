@@ -59,7 +59,7 @@ type detectInternalResult struct {
 
 func detectInternal(ctx context.Context, detectors []Detector) []detectInternalResult {
 	wg := sync.WaitGroup{}
-	mu := sync.Mutex{} //mu guard resultSlice during goroutines execution
+	mu := sync.Mutex{} // mu guard resultSlice during goroutines execution
 	resultSlice := make([]detectInternalResult, 0, len(detectors))
 
 	for i := range detectors {
