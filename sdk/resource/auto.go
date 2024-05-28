@@ -7,7 +7,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 )
@@ -52,15 +51,14 @@ func Detect(ctx context.Context, detectors ...Detector) (*Resource, error) {
 }
 
 type detectInternalResult struct {
-	detectorIndex int // index in the detector slice
-	resource      *Resource
-	err           error
+	resource *Resource
+	err      error
 }
 
 func detectInternal(ctx context.Context, detectors []Detector) []detectInternalResult {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{} // mu guard resultSlice during goroutines execution
-	resultSlice := make([]detectInternalResult, 0, len(detectors))
+	resultSlice := make([]detectInternalResult, len(detectors))
 
 	for i := range detectors {
 		if detectors[i] == nil {
@@ -73,19 +71,13 @@ func detectInternal(ctx context.Context, detectors []Detector) []detectInternalR
 			r, err := detector.Detect(ctx)
 			mu.Lock()
 			defer mu.Unlock()
-			resultSlice = append(resultSlice, detectInternalResult{
-				detectorIndex: index,
-				resource:      r,
-				err:           err,
-			})
+			resultSlice[index] = detectInternalResult{
+				resource: r,
+				err:      err,
+			}
 		}(i)
 	}
-
 	wg.Wait()
-
-	slices.SortFunc(resultSlice, func(a, b detectInternalResult) int {
-		return a.detectorIndex - b.detectorIndex
-	})
 
 	return resultSlice
 }
@@ -106,6 +98,9 @@ func detect(ctx context.Context, res *Resource, detectors []Detector) error {
 			if !errors.Is(result.err, ErrPartialResource) {
 				continue
 			}
+		}
+		if result.resource == nil {
+			continue
 		}
 
 		r, err := Merge(res, result.resource)
