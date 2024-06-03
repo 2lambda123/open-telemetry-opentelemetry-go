@@ -43,6 +43,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Fix panic in baggage creation when a member contains 0x80 char in key or value. (#5494)
 - Correct comments for the priority of the `WithEndpoint` and `WithEndpointURL` options and their coresponding environment variables in  in `go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc`. (#5508)
 - Fix stale timestamps reported by the lastvalue aggregation. (#5517)
+- Parallelized the Detect function in `opentelemetry-go/sdk/resource` to speed up the detection function when using multiple slow detectors, this also allow multiple custom detectors that rely on context with timeout to run concurrently. (#5402)
 
 ## [1.27.0/0.49.0/0.3.0] 2024-05-21
 
