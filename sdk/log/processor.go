@@ -26,9 +26,12 @@ type Processor interface {
 	// considered unrecoverable and will be reported to a configured error
 	// Handler.
 	//
-	// Before modifying a Record, the implementation must use Record.Clone
-	// to create a copy that shares no state with the original.
-	OnEmit(ctx context.Context, record Record) error
+	// Implementations may synchronously modify the record so that the changes
+	// are visible in the next registered processor.
+	// Implementations must not modify the record asynchronously as [Record]
+	// is not concurrent safe.
+	// Implementations must not retain the record.
+	OnEmit(ctx context.Context, record *Record) error
 	// Enabled returns whether the Processor will process for the given context
 	// and record.
 	//
@@ -46,6 +49,7 @@ type Processor interface {
 	//
 	// Before modifying a Record, the implementation must use Record.Clone
 	// to create a copy that shares no state with the original.
+	// Implementations must not retain the record.
 	Enabled(ctx context.Context, record Record) bool
 	// Shutdown is called when the SDK shuts down. Any cleanup or release of
 	// resources held by the exporter should be done in this call.
