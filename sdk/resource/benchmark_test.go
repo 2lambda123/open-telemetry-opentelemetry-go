@@ -4,9 +4,11 @@
 package resource_test
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"testing"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -75,4 +77,71 @@ func BenchmarkMergeResource_8(b *testing.B) {
 
 func BenchmarkMergeResource_16(b *testing.B) {
 	benchmarkMergeResource(b, 16)
+}
+
+type testDetector struct {
+	durationMilliSecond time.Duration
+}
+
+// instant detector don't do anything
+// its benchmark the overhead of the resource.New implementation.
+func (f testDetector) Detect(_ context.Context) (*resource.Resource, error) {
+	time.Sleep(f.durationMilliSecond * time.Millisecond)
+	return resource.NewSchemaless(), nil
+}
+
+func benchmarkOverhead(ctx context.Context, b *testing.B, testedDetector resource.Detector, n int) {
+	detectors := []resource.Detector{}
+	for i := 0; i < n; i++ {
+		detectors = append(detectors, testedDetector)
+	}
+
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = resource.New(ctx, resource.WithDetectors(detectors...))
+	}
+}
+
+func BenchmarkDetectors(b *testing.B) {
+	type detectorType struct {
+		name string
+		resource.Detector
+	}
+	detectors := []detectorType{
+		{
+			name:     "instantDetector",
+			Detector: testDetector{durationMilliSecond: 0},
+		},
+		{
+			name:     "fastDetector",
+			Detector: testDetector{durationMilliSecond: 1},
+		},
+		{
+			name:     "mediumDetector",
+			Detector: testDetector{durationMilliSecond: 30},
+		},
+		{
+			name:     "slowDetector",
+			Detector: testDetector{durationMilliSecond: 500},
+		},
+	}
+	for _, detectorType := range detectors {
+		b.Run(detectorType.name, func(b *testing.B) {
+			for _, numberOfDetectors := range []int{1, 2, 4, 8, 16} {
+				b.Run(fmt.Sprintf("%d-detectors", numberOfDetectors), func(b *testing.B) {
+					benchmarkOverhead(context.Background(), b, testDetector{durationMilliSecond: 0}, numberOfDetectors)
+				})
+			}
+		})
+	}
+}
+
+func BenchmarkDefaultResource(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = resource.Default()
+	}
 }
